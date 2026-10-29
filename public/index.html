@@ -1,0 +1,426 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AI Gateway</title>
+<style>
+  :root {
+    --bg: #0f1115; --panel: #171a21; --line: #262b36; --text: #e8eaf0; --muted: #8a92a6;
+    --accent: #4f8cff; --user: #1f2a44; --ok: #3ecf8e; --warn: #f5a524; --bad: #f0616d; --code: #0b0d12;
+  }
+  @media (prefers-color-scheme: light) {
+    :root { --bg: #f6f7fa; --panel: #fff; --line: #dfe3ec; --text: #161a23; --muted: #667089; --user: #e3ecff; --code: #f0f2f7; }
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body { background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; display: flex; flex-direction: column; }
+  header { display: flex; align-items: center; gap: 8px; padding: 10px 12px; padding-top: calc(10px + env(safe-area-inset-top)); background: var(--panel); border-bottom: 1px solid var(--line); }
+  header h1 { font-size: 16px; margin: 0; flex: 1; }
+  button { font: inherit; color: var(--text); background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 7px 12px; cursor: pointer; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button:disabled { opacity: .5; }
+  #chat { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 12px; }
+  .msg { max-width: 760px; width: 100%; margin: 0 auto; }
+  .bubble { padding: 10px 12px; border-radius: 14px; border: 1px solid var(--line); background: var(--panel); overflow-wrap: anywhere; }
+  .msg.user .bubble { background: var(--user); border-color: transparent; }
+  .txt { white-space: pre-wrap; }
+  .txt h2, .txt h3, .txt h4 { margin: 6px 0 2px; font-size: 1em; }
+  .txt code { background: var(--code); padding: 1px 5px; border-radius: 5px; font-size: .92em; }
+  .code { margin: 8px 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--code); }
+  .codebar { display: flex; justify-content: space-between; align-items: center; padding: 4px 8px; font-size: 12px; color: var(--muted); border-bottom: 1px solid var(--line); }
+  .codebar button { padding: 2px 8px; font-size: 12px; border-radius: 7px; }
+  pre { margin: 0; padding: 10px; overflow-x: auto; font-size: 13px; line-height: 1.45; }
+  pre code { background: none; padding: 0; }
+  .via { font-size: 12px; color: var(--muted); margin: 4px 4px 0; }
+  .err { color: var(--bad); }
+  form { display: flex; gap: 8px; padding: 10px 12px; padding-bottom: calc(10px + env(safe-area-inset-bottom)); background: var(--panel); border-top: 1px solid var(--line); }
+  textarea { flex: 1; resize: none; max-height: 140px; font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 12px; padding: 9px 11px; }
+  #drawer { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: none; z-index: 5; }
+  #drawer.open { display: block; }
+  #sheet { position: absolute; right: 0; top: 0; bottom: 0; width: min(420px, 92vw); background: var(--panel); border-left: 1px solid var(--line); padding: 14px; overflow-y: auto; }
+  label { display: block; font-size: 12px; color: var(--muted); margin: 12px 0 4px; }
+  input, select, #sheet textarea { width: 100%; font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+  #sheet textarea { min-height: 110px; max-height: none; }
+  .prov { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; margin-top: 8px; font-size: 13px; }
+  .prov b { display: inline-block; min-width: 12px; }
+  .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; background: var(--muted); }
+  .dot.ok { background: var(--ok); } .dot.wait { background: var(--warn); } .dot.off { background: var(--muted); }
+  .small { font-size: 12px; color: var(--muted); }
+  .small.err { color: var(--bad); }
+  .prov .row { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+  .prov button { padding: 5px 10px; font-size: 13px; }
+  .prov label { margin: 8px 0 3px; }
+  .panel { margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--line); }
+  .banner { border: 1px solid var(--warn); border-radius: 10px; padding: 8px 10px; margin-top: 8px; font-size: 12px; }
+  .banner.info { border-color: var(--line); color: var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <h1>AI Gateway</h1>
+  <button id="btnNew" title="Nova conversa">Nova</button>
+  <button id="btnCfg">Ajustes</button>
+</header>
+
+<div id="chat"></div>
+
+<form id="form">
+  <textarea id="input" rows="1" placeholder="Peça um app, um site, um trecho de código..." enterkeyhint="send"></textarea>
+  <button class="primary" id="btnSend" type="submit">Enviar</button>
+</form>
+
+<div id="drawer">
+  <div id="sheet">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <strong>Ajustes</strong><button id="btnClose">Fechar</button>
+    </div>
+
+    <label for="url">Endereço do gateway (vazio = este mesmo site)</label>
+    <input id="url" type="url" autocomplete="off" placeholder="https://ai-gateway.seu-nome.workers.dev">
+
+    <label for="token">Token do gateway (o segredo GATEWAY_TOKEN)</label>
+    <input id="token" type="password" autocomplete="off" placeholder="deixe vazio se não usa">
+
+    <label>IAs (toque em Conectar para entrar em cada uma)</label>
+    <div id="provs" class="small">carregando…</div>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button id="btnRefresh">Atualizar</button>
+      <button id="btnReset">Liberar todos</button>
+    </div>
+    <p class="small">"Liberar todos" zera as esperas e tenta de novo desde o primeiro provedor.</p>
+
+    <label for="model">Modelo</label>
+    <select id="model"></select>
+
+    <label for="system">Instrução do sistema</label>
+    <textarea id="system"></textarea>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+const DEFAULT_SYSTEM = 'Você é um engenheiro de software sênior, especialista em criar aplicativos e sites. Responda em português do Brasil. Entregue código completo e funcional, separado por arquivo (com o nome do arquivo antes de cada bloco), e explique só o necessário.';
+const store = {
+  get: (k, d) => { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+  set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+};
+
+let history = store.get('history', []);   // [{role, content, via?}]
+let busy = false;
+
+const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+function inline(t) {
+  let h = esc(t);
+  h = h.replace(/`([^`\n]+)`/g, '<code>$1</code>')
+       .replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')
+       .replace(/^### (.*)$/gm, '<h4>$1</h4>').replace(/^## (.*)$/gm, '<h3>$1</h3>').replace(/^# (.*)$/gm, '<h2>$1</h2>');
+  return '<div class="txt">' + h + '</div>';
+}
+function block(p) {
+  const nl = p.indexOf('\n');
+  const lang = nl >= 0 ? p.slice(0, nl).trim() : '';
+  const code = (nl >= 0 ? p.slice(nl + 1) : p).replace(/\n$/, '');
+  return '<div class="code"><div class="codebar"><span>' + (esc(lang) || 'código') + '</span><button data-copy type="button">copiar</button></div><pre><code>' + esc(code) + '</code></pre></div>';
+}
+function render(md) { return md.split('```').map((p, i) => (i % 2 ? block(p) : inline(p))).join(''); }
+
+function addMsg(role, content, via) {
+  const wrap = document.createElement('div');
+  wrap.className = 'msg ' + role;
+  wrap.innerHTML = '<div class="bubble"></div><div class="via"></div>';
+  setMsg(wrap, content, via);
+  $('chat').appendChild(wrap);
+  return wrap;
+}
+function setMsg(wrap, content, via, isErr) {
+  const b = wrap.querySelector('.bubble');
+  b.innerHTML = isErr ? '<span class="err">' + esc(content) + '</span>' : render(content || '…');
+  wrap.querySelector('.via').textContent = via || '';
+}
+function scrollDown(force) {
+  const c = $('chat');
+  if (force || c.scrollHeight - c.scrollTop - c.clientHeight < 140) c.scrollTop = c.scrollHeight;
+}
+function redraw() {
+  $('chat').innerHTML = '';
+  if (!history.length) addMsg('assistant', 'Oi! Eu uso várias IAs gratuitas e troco sozinho quando a cota de uma acaba. Primeiro, toque em Ajustes e conecte uma ou mais IAs. Depois é só descrever o app ou site que você quer criar.');
+  history.forEach((m) => addMsg(m.role, m.content, m.via));
+  scrollDown(true);
+}
+
+$('chat').addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-copy]');
+  if (!btn) return;
+  const text = btn.closest('.code').querySelector('pre').textContent;
+  const done = () => { btn.textContent = 'copiado'; setTimeout(() => (btn.textContent = 'copiar'), 1200); };
+  if (navigator.clipboard) navigator.clipboard.writeText(text).then(done, done);
+  else { const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); done(); }
+});
+
+const api = (p) => ($('url').value.trim() || window.GATEWAY_URL || '').replace(/\/+$/, '') + p;
+function needToken() { $('drawer').classList.add('open'); $('token').focus(); }
+
+function headers() {
+  const h = { 'Content-Type': 'application/json' };
+  const t = $('token').value.trim();
+  if (t) h.Authorization = 'Bearer ' + t;
+  return h;
+}
+
+async function send(text) {
+  busy = true; $('btnSend').disabled = true;
+  history.push({ role: 'user', content: text });
+  addMsg('user', text);
+  const wrap = addMsg('assistant', '');
+  scrollDown(true);
+
+  const messages = [];
+  const sys = $('system').value.trim();
+  if (sys) messages.push({ role: 'system', content: sys });
+  history.forEach((m) => messages.push({ role: m.role, content: m.content }));
+
+  let acc = '';
+  try {
+    const r = await fetch(api('/v1/chat/completions'), {
+      method: 'POST', headers: headers(),
+      body: JSON.stringify({ model: $('model').value, messages, stream: true }),
+    });
+    if (!r.ok) {
+      if (r.status === 401) needToken();
+      let msg = 'Erro ' + r.status;
+      try {
+        const j = await r.json();
+        msg = j.error.message + (j.error.retry_in_s ? ' Tente de novo em ~' + Math.ceil(j.error.retry_in_s / 60) + ' min.' : '');
+        if (j.error.attempts && j.error.attempts.length) msg += '\n\n' + j.error.attempts.map((a) => '• ' + a.provider + ' / ' + a.model + ': ' + a.reason).join('\n');
+      } catch {}
+      setMsg(wrap, msg, '', true);
+      history.pop();
+    } else {
+      const via = r.headers.get('X-Provider') + ' · ' + r.headers.get('X-Model');
+      const reader = r.body.getReader();
+      const dec = new TextDecoder();
+      let buf = '';
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        let i;
+        while ((i = buf.indexOf('\n\n')) >= 0) {
+          const ev = buf.slice(0, i); buf = buf.slice(i + 2);
+          for (const line of ev.split('\n')) {
+            if (!line.startsWith('data:')) continue;
+            const d = line.slice(5).trim();
+            if (!d || d === '[DONE]') continue;
+            try {
+              const j = JSON.parse(d);
+              const delta = j.choices && j.choices[0] && j.choices[0].delta;
+              if (delta && delta.content) { acc += delta.content; setMsg(wrap, acc, via); scrollDown(); }
+            } catch {}
+          }
+        }
+      }
+      if (!acc) { setMsg(wrap, 'O modelo não devolveu texto. Tente novamente.', via, true); history.pop(); }
+      else { setMsg(wrap, acc, via); history.push({ role: 'assistant', content: acc, via }); }
+    }
+  } catch (e) {
+    setMsg(wrap, 'Não consegui falar com o gateway: ' + e.message, '', true);
+    history.pop();
+  }
+  store.set('history', history);
+  busy = false; $('btnSend').disabled = false;
+  scrollDown(true);
+  loadStatus();
+}
+
+$('form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const t = $('input').value.trim();
+  if (!t || busy) return;
+  $('input').value = ''; autosize();
+  send(t);
+});
+$('input').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey && window.matchMedia('(min-width: 700px)').matches) { e.preventDefault(); $('form').requestSubmit(); }
+});
+function autosize() { const t = $('input'); t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight, 140) + 'px'; }
+$('input').addEventListener('input', autosize);
+
+$('btnNew').onclick = () => { if (!busy && confirm('Começar uma nova conversa?')) { history = []; store.set('history', history); redraw(); } };
+$('btnCfg').onclick = () => { $('drawer').classList.add('open'); loadStatus(); };
+$('btnClose').onclick = () => $('drawer').classList.remove('open');
+$('drawer').addEventListener('click', (e) => { if (e.target === $('drawer')) $('drawer').classList.remove('open'); });
+$('btnRefresh').onclick = loadStatus;
+$('btnReset').onclick = async () => { await fetch(api('/api/reset'), { method: 'POST', headers: headers() }); loadStatus(); };
+
+['model', 'token', 'system', 'url'].forEach((id) => $(id).addEventListener('change', () => store.set(id, $(id).value)));
+
+function fmt(s) { return s >= 3600 ? Math.round(s / 3600) + ' h' : s >= 60 ? Math.round(s / 60) + ' min' : s + ' s'; }
+
+// ---- conectar provedores (abrir a tela de login/chave de cada IA)
+let PROVS = [];
+let PERSISTENT = true;
+let autoOpened = false;
+let pollTimer;
+const notes = {};        // id -> { text, err, link }
+const opened = new Set(); // painéis de "colar chave" abertos
+
+function openExternal(url) {
+  try {
+    const B = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Browser;
+    if (B && B.open) { B.open({ url }); return; } // APK: abre no navegador do celular
+  } catch {}
+  window.open(url, '_blank', 'noopener');
+}
+
+function provCard(p) {
+  const waiting = p.cooldown || (p.models.length && p.models.every((m) => m.cooldown));
+  const dot = !p.configured ? 'off' : waiting ? 'wait' : 'ok';
+  let note;
+  if (!p.configured) note = 'não conectado';
+  else if (p.cooldown) note = 'em espera: ' + esc(p.cooldown.reason) + ' (' + fmt(p.cooldown.seconds) + ')';
+  else {
+    note = p.stats.ok + ' ok · ' + p.stats.fail + ' falhas' + (p.source === 'app' ? ' · conectado pelo app' : p.source === 'env' ? ' · chave do servidor' : '');
+    p.models.filter((m) => m.cooldown).forEach((m) => { note += '<br>' + esc(m.id) + ': ' + esc(m.cooldown.reason) + ' (' + fmt(m.cooldown.seconds) + ')'; });
+  }
+  const n = notes[p.id];
+  const msg = n ? '<div class="small' + (n.err ? ' err' : '') + '">' + esc(n.text) +
+    (n.link ? ' <a href="' + esc(n.link) + '" target="_blank" rel="noopener">Toque aqui</a>' : '') + '</div>' : '';
+
+  const id = esc(p.id);
+  let actions;
+  if (p.login === 'oauth') {
+    actions = '<button data-act="oauth" data-id="' + id + '" class="' + (p.configured ? '' : 'primary') + '">' +
+      (p.configured ? 'Reconectar' : 'Entrar com ' + esc(p.name.split(' ')[0])) + '</button>';
+  } else {
+    actions = '<button data-act="toggle" data-id="' + id + '" class="' + (p.configured ? '' : 'primary') + '">' +
+      (p.configured ? 'Trocar chave' : 'Conectar') + '</button>';
+  }
+  if (p.source === 'app') actions += '<button data-act="remove" data-id="' + id + '">Remover</button>';
+
+  let panel = '';
+  if (opened.has(p.id) && p.login !== 'oauth') {
+    panel = '<div class="panel">' +
+      '<button data-act="site" data-id="' + id + '">1. Abrir a página de login</button>' +
+      '<div class="small" style="margin-top:6px">' + esc(p.hint || 'Entre na sua conta, crie uma chave de API e copie.') + '</div>' +
+      p.fields.map((f) => '<label>' + esc(f.label) + '</label><input data-id="' + id + '" data-field="' + esc(f.name) + '" type="' +
+        (f.secret ? 'password' : 'text') + '" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="cole aqui">').join('') +
+      '<div class="row"><button class="primary" data-act="save" data-id="' + id + '">2. Salvar</button></div></div>';
+  }
+  return '<div class="prov"><span class="dot ' + dot + '"></span><b>' + esc(p.name) + '</b><div class="small">' + note + '</div>' +
+    msg + '<div class="row">' + actions + '</div>' + panel + '</div>';
+}
+
+function renderProvs() {
+  const a = document.activeElement;
+  if (a && a.tagName === 'INPUT' && $('provs').contains(a)) return; // não apaga o que a pessoa está digitando
+  const warn = PERSISTENT ? '' : '<div class="banner">Este gateway não tem armazenamento permanente: as IAs conectadas aqui somem se ele reiniciar. Publique pelo GitHub Actions (cria o armazenamento sozinho) ou use chaves nos segredos.</div>';
+  $('provs').innerHTML = warn + PROVS.map(provCard).join('');
+}
+
+async function post(path, body) {
+  const r = await fetch(api(path), { method: 'POST', headers: headers(), body: JSON.stringify(body || {}) });
+  let j = {};
+  try { j = await r.json(); } catch {}
+  if (r.status === 401) needToken();
+  return { ok: r.ok, status: r.status, j };
+}
+const errText = (res) => (res.j && res.j.error && res.j.error.message) || 'Erro ' + res.status;
+
+async function saveKey(p) {
+  const values = {};
+  document.querySelectorAll('#provs input[data-id="' + p.id + '"]').forEach((i) => { values[i.dataset.field] = i.value; });
+  notes[p.id] = { text: 'Verificando a chave…' }; renderProvs();
+  const res = await post('/api/keys', { provider: p.id, values });
+  if (res.ok) {
+    if (document.activeElement) document.activeElement.blur();
+    opened.delete(p.id);
+    notes[p.id] = { text: res.j.warning || 'Conectado ✓' };
+  } else notes[p.id] = { text: errText(res), err: true };
+  await loadStatus();
+}
+
+async function removeKey(p) {
+  const res = await post('/api/keys/remove', { provider: p.id });
+  notes[p.id] = res.ok ? { text: 'Removido.' } : { text: errText(res), err: true };
+  await loadStatus();
+}
+
+async function startOauth(p) {
+  notes[p.id] = { text: 'Abrindo o login…' }; renderProvs();
+  const res = await post('/api/connect/' + encodeURIComponent(p.id) + '/start');
+  if (!res.ok || !res.j.url) { notes[p.id] = { text: errText(res), err: true }; renderProvs(); return; }
+  notes[p.id] = { text: 'Faça o login na janela que abriu e volte aqui. Se não abriu:', link: res.j.url };
+  renderProvs();
+  openExternal(res.j.url);
+  pollConnected(p);
+}
+
+function pollConnected(p) {
+  clearInterval(pollTimer);
+  const before = p.source === 'app';
+  const t0 = Date.now();
+  pollTimer = setInterval(async () => {
+    await loadStatus();
+    const cur = PROVS.find((x) => x.id === p.id);
+    const done = cur && cur.source === 'app' && !before;
+    if (done) notes[p.id] = { text: 'Conectado ✓' };
+    if (done || Date.now() - t0 > (before ? 60000 : 180000)) { clearInterval(pollTimer); renderProvs(); }
+  }, 3000);
+}
+
+$('provs').addEventListener('click', async (e) => {
+  const b = e.target.closest('button[data-act]');
+  if (!b) return;
+  const p = PROVS.find((x) => x.id === b.dataset.id);
+  if (!p) return;
+  const act = b.dataset.act;
+  if (act === 'toggle') { opened.has(p.id) ? opened.delete(p.id) : opened.add(p.id); renderProvs(); }
+  else if (act === 'site') openExternal(p.keyUrl);
+  else if (act === 'save') await saveKey(p);
+  else if (act === 'remove') { if (confirm('Remover a conexão com ' + p.name + ' deste gateway?')) await removeKey(p); }
+  else if (act === 'oauth') await startOauth(p);
+});
+
+document.addEventListener('visibilitychange', () => { if (!document.hidden && $('drawer').classList.contains('open')) loadStatus(); });
+
+async function loadStatus() {
+  try {
+    const r = await fetch(api('/api/status'), { headers: headers() });
+    if (!r.ok) {
+      if (r.status === 401) { $('provs').textContent = 'Token inválido — digite acima.'; if (!$('token').value) needToken(); }
+      else $('provs').textContent = 'Erro ' + r.status;
+      return;
+    }
+    const status = await r.json();
+    const providers = status.providers;
+    PROVS = providers;
+    PERSISTENT = status.persistent !== false;
+    if (!autoOpened && !providers.some((p) => p.configured)) { autoOpened = true; $('drawer').classList.add('open'); }
+
+    const cur = $('model').value || store.get('model', 'auto');
+    const opts = ['<option value="auto">auto (melhor disponível)</option>', '<option value="auto-code">auto-code (prioriza código)</option>'];
+    providers.filter((p) => p.configured).forEach((p) => {
+      opts.push('<optgroup label="' + esc(p.name) + '">' + '<option value="' + p.id + '">' + esc(p.name) + ' (todos)</option>' +
+        p.models.map((m) => '<option value="' + p.id + ':' + esc(m.id) + '">' + esc(m.id) + '</option>').join('') + '</optgroup>');
+    });
+    $('model').innerHTML = opts.join('');
+    $('model').value = cur;
+    if ($('model').value !== cur) $('model').value = 'auto';
+
+    renderProvs();
+  } catch (e) { $('provs').textContent = 'Sem conexão com o gateway.'; }
+}
+
+$('url').value = store.get('url', '');
+$('token').value = store.get('token', '');
+$('system').value = store.get('system', DEFAULT_SYSTEM);
+$('model').innerHTML = '<option value="auto">auto</option>';
+$('model').value = store.get('model', 'auto');
+redraw();
+loadStatus();
+</script>
+</body>
+</html>

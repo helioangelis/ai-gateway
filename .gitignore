@@ -1,0 +1,9 @@
+.env
+.state.json
+.store.json
+config.json
+secrets.json
+node_modules/
+.wrangler/
+.dev.vars
+*.apk

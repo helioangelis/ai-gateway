@@ -1,0 +1,14 @@
+{
+  "name": "ai-gateway",
+  "version": "1.0.0",
+  "description": "Gateway único para IAs gratuitas com troca automática quando a cota acaba",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "check": "node server.js --check",
+    "discover": "node server.js --discover",
+    "test": "node test/mock-test.js"
+  },
+  "engines": { "node": ">=20" },
+  "license": "MIT"
+}

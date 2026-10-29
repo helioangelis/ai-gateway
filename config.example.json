@@ -1,0 +1,19 @@
+{
+  "order": ["groq", "gemini", "openrouter", "nvidia", "cerebras", "mistral", "opencode", "cloudflare"],
+  "disabled": [],
+  "models": {
+    "groq": [
+      { "id": "openai/gpt-oss-120b", "code": true },
+      "llama-3.3-70b-versatile"
+    ]
+  },
+  "extraProviders": [
+    {
+      "id": "exemplo",
+      "name": "Meu provedor extra",
+      "baseUrl": "https://api.exemplo.com/v1",
+      "keyEnv": "EXEMPLO_API_KEY",
+      "models": [{ "id": "nome-do-modelo", "code": true }]
+    }
+  ]
+}

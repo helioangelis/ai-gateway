@@ -1,0 +1,13 @@
+name = "ai-gateway"
+main = "worker.js"
+compatibility_date = "2025-01-01"
+
+# Serve a tela de chat (public/) direto do Worker.
+[assets]
+directory = "./public"
+
+# Guarda quais provedores estão em espera. O id é preenchido pelo Actions
+# (scripts/ensure-cloudflare.js cria o KV na primeira vez).
+[[kv_namespaces]]
+binding = "STATE"
+id = "__KV_ID__"

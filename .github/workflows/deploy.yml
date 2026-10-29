@@ -1,0 +1,126 @@
+name: Testar, publicar e gerar APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ai-gateway
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Testes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node --check core.js && node --check server.js
+      - run: node test/mock-test.js
+
+  deploy:
+    name: Publicar no Cloudflare Workers
+    needs: test
+    runs-on: ubuntu-latest
+    outputs:
+      url: ${{ steps.cf.outputs.url }}
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      GATEWAY_TOKEN: ${{ secrets.GATEWAY_TOKEN }}
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+      CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
+      MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+      OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+      CLOUDFLARE_API_KEY: ${{ secrets.CLOUDFLARE_API_KEY }}
+      GATEWAY_CONFIG: ${{ secrets.GATEWAY_CONFIG }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Conferir segredos obrigatórios
+        run: |
+          missing=0
+          for v in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID GATEWAY_TOKEN; do
+            if [ -z "${!v}" ]; then
+              echo "::error::Falta o segredo $v (Settings > Secrets and variables > Actions)."
+              missing=1
+            fi
+          done
+          [ "$missing" = 0 ]
+
+      - name: Preparar conta Cloudflare (subdomínio e KV)
+        id: cf
+        run: node scripts/ensure-cloudflare.js
+
+      - name: Publicar o Worker
+        run: npx --yes wrangler@4 deploy
+
+      - name: Enviar chaves ao Worker
+        run: |
+          node scripts/push-secrets.js
+          npx --yes wrangler@4 secret bulk secrets.json
+          rm -f secrets.json
+
+      - name: Verificar no ar e testar cada chave
+        env:
+          URL: ${{ steps.cf.outputs.url }}
+        run: |
+          if [ -z "$URL" ]; then echo "::warning::URL desconhecida; pulei a verificação."; exit 0; fi
+          sleep 8
+          curl -fsS --retry 8 --retry-delay 4 --retry-all-errors "$URL/health"; echo
+          {
+            echo "## Gateway no ar"
+            echo ""
+            echo "$URL"
+            echo ""
+            echo "### Teste de cada provedor"
+            echo '```'
+            curl -fsS --max-time 90 -H "Authorization: Bearer $GATEWAY_TOKEN" "$URL/api/check" | jq -r '.lines[]'
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
+  apk:
+    name: Gerar APK
+    needs: deploy
+    runs-on: ubuntu-latest
+    env:
+      GATEWAY_URL: ${{ needs.deploy.outputs.url }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Compilar o APK
+        run: bash scripts/build-apk.sh
+
+      - name: Publicar o APK (link direto)
+        run: |
+          gh release delete latest --yes --cleanup-tag 2>/dev/null || true
+          gh release create latest ai-gateway.apk \
+            --target "$GITHUB_SHA" \
+            --title "AI Gateway - APK mais recente" \
+            --notes "APK gerado automaticamente. Gateway: ${GATEWAY_URL:-defina nos ajustes do app}"
+          LINK="https://github.com/${GITHUB_REPOSITORY}/releases/download/latest/ai-gateway.apk"
+          {
+            echo "## APK pronto"
+            echo ""
+            echo "$LINK"
+          } | tee -a "$GITHUB_STEP_SUMMARY"
