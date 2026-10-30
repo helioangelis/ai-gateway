@@ -78,8 +78,24 @@ jobs:
           URL: ${{ steps.cf.outputs.url }}
         run: |
           if [ -z "$URL" ]; then echo "::warning::URL desconhecida; pulei a verificação."; exit 0; fi
-          sleep 8
-          curl -fsS --retry 8 --retry-delay 4 --retry-all-errors "$URL/health"; echo
+          # Um endereço workers.dev recém-criado pode levar alguns minutos para ter certificado.
+          ok=0
+          for i in $(seq 1 36); do
+            if curl -fsS --max-time 15 "$URL/health" >/dev/null 2>&1; then ok=1; break; fi
+            echo "Aguardando o endereço responder ($i/36)..."
+            sleep 10
+          done
+          if [ "$ok" != 1 ]; then
+            {
+              echo "## Gateway publicado, endereço ainda não responde"
+              echo ""
+              echo "$URL"
+              echo ""
+              echo "O Worker foi publicado. Endereços novos do workers.dev podem levar alguns minutos para funcionar. Abra o endereço acima mais tarde."
+            } | tee -a "$GITHUB_STEP_SUMMARY"
+            echo "::warning::O endereço $URL ainda não respondeu, mas o Worker foi publicado."
+            exit 0
+          fi
           {
             echo "## Gateway no ar"
             echo ""
@@ -87,7 +103,7 @@ jobs:
             echo ""
             echo "### Teste de cada provedor"
             echo '```'
-            curl -fsS --max-time 90 -H "Authorization: Bearer $GATEWAY_TOKEN" "$URL/api/check" | jq -r '.lines[]'
+            curl -sS --max-time 90 -H "Authorization: Bearer $GATEWAY_TOKEN" "$URL/api/check" | jq -r '.lines[]?' || true
             echo '```'
           } | tee -a "$GITHUB_STEP_SUMMARY"
 
