@@ -1,0 +1,68 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Checar sintaxe
+        run: |
+          for f in src/*.js scripts/*.js web/app.js; do node --check "$f"; done
+
+      - name: Smoke test
+        run: node scripts/smoke.js
+
+  exe:
+    needs: test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Gerar o EXE
+        run: node scripts/build-exe.js
+
+      - name: Guardar o EXE no run
+        uses: actions/upload-artifact@v4
+        with:
+          name: AI-Gateway-exe
+          path: |
+            dist/AI-Gateway.exe
+            dist/README.md
+            dist/.env.example
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publicar em releases/latest
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Build mais recente
+          make_latest: true
+          body: |
+            Gerado automaticamente pelo GitHub Actions a partir do commit `${{ github.sha }}`.
+
+            Baixe o `AI-Gateway.exe` e rode com duplo clique. Os dados ficam na pasta `data/` ao lado do executável.
+          files: dist/AI-Gateway.exe

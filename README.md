@@ -40,7 +40,18 @@ node src/index.js --no-open    # não abre o navegador
 npm run smoke                  # sobe numa pasta temporária e testa as rotas
 ```
 
-## Gerar o EXE
+## Baixar o EXE
+
+Cada push no `main` gera o executável no GitHub Actions. Link fixo:
+
+```
+https://github.com/helioangelis/ai-gateway/releases/latest/download/AI-Gateway.exe
+```
+
+Ou abra **Actions → Build → último run → Artifacts → AI-Gateway-exe**. O release
+`latest` é sobrescrito a cada push; o histórico fica nos runs.
+
+## Gerar o EXE localmente
 
 ```powershell
 npm run build:exe
