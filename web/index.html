@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI Gateway</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div id="login" class="login hidden">
+    <form id="loginForm" class="login-card">
+      <h1>AI Gateway</h1>
+      <p>Cole a chave do gateway para abrir o painel.</p>
+      <input id="loginToken" type="password" placeholder="agw-..." autocomplete="off" spellcheck="false">
+      <button class="primary" type="submit">Entrar</button>
+      <p id="loginError" class="error"></p>
+      <p class="hint">A chave aparece no console ao iniciar e em <code>data/.token</code>.</p>
+    </form>
+  </div>
+
+  <div id="app" class="hidden">
+    <header class="top">
+      <div class="brand">
+        <span class="dot"></span>
+        <strong>AI Gateway</strong>
+        <span id="pill" class="pill">—</span>
+      </div>
+      <nav id="tabs">
+        <button data-tab="overview" class="active">Visão geral</button>
+        <button data-tab="keys">Chaves</button>
+        <button data-tab="chain">Cadeia</button>
+        <button data-tab="models">Modelos</button>
+        <button data-tab="usage">Uso</button>
+        <button data-tab="play">Playground</button>
+        <button data-tab="settings">Ajustes</button>
+      </nav>
+      <div class="top-actions">
+        <button id="btnTheme" class="ghost" title="Tema">◐</button>
+        <button id="btnLogout" class="ghost" title="Sair">Sair</button>
+      </div>
+    </header>
+
+    <main>
+      <section id="tab-overview" class="tab active"></section>
+      <section id="tab-keys" class="tab"></section>
+      <section id="tab-chain" class="tab"></section>
+      <section id="tab-models" class="tab"></section>
+      <section id="tab-usage" class="tab"></section>
+      <section id="tab-play" class="tab"></section>
+      <section id="tab-settings" class="tab"></section>
+    </main>
+
+    <div id="toast" class="toast hidden"></div>
+    <div id="modal" class="modal hidden">
+      <div class="modal-card">
+        <div class="modal-head">
+          <strong id="modalTitle">—</strong>
+          <button id="modalClose" class="ghost">Fechar</button>
+        </div>
+        <div id="modalBody"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

@@ -1,9 +1,9 @@
-.env
-.state.json
-.store.json
-config.json
-secrets.json
 node_modules/
-.wrangler/
-.dev.vars
-*.apk
+dist/
+data/
+.env
+src/web-assets.js
+*.log
+.DS_Store
+senhas.txt
+ai-gateway.apk
