@@ -197,6 +197,7 @@
             ${badges}
             <span class="grow"></span>
             <span class="small muted">${p.models.length} modelo(s)${st.latency ? ' · ' + st.latency + ' ms' : ''}</span>
+            ${!p.configured && p.keyUrl ? `<a class="button" href="${esc(p.keyUrl)}" target="_blank" rel="noopener">Pegar chave ↗</a>` : ''}
           </div>
           ${err}
         </div>`;
@@ -291,7 +292,7 @@
               ${p.enabled === false ? '<span class="badge off">desativado</span>' : ''}
               ${p.configured ? '<span class="badge ok">conectado</span>' : '<span class="badge off">sem chave</span>'}
             </div>
-            ${p.keyUrl ? `<a class="small" href="${esc(p.keyUrl)}" target="_blank" rel="noopener">onde pegar a chave ↗</a>` : ''}
+            ${p.keyUrl ? `<a class="button" href="${esc(p.keyUrl)}" target="_blank" rel="noopener">Pegar chave ↗</a>` : ''}
           </div>
           ${p.hint ? `<p class="small muted">${esc(p.hint)}</p>` : ''}
           <div class="grid2" style="margin:10px 0">

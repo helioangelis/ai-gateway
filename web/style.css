@@ -178,6 +178,18 @@ button.ghost { background: transparent; }
 button.danger { color: var(--bad); }
 button.tiny { padding: 4px 9px; font-size: 12px; }
 button:disabled { opacity: .5; cursor: not-allowed; }
+a.button {
+  display: inline-block;
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 7px 12px;
+  font-size: 13px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+a.button:hover { border-color: var(--accent); }
 
 label.field { display: grid; gap: 5px; font-size: 13px; color: var(--muted); }
 .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }

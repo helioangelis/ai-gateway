@@ -56,13 +56,14 @@ jobs:
 
       - name: Publicar em releases/latest
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: latest
-          name: Build mais recente
-          make_latest: true
-          body: |
-            Gerado automaticamente pelo GitHub Actions a partir do commit `${{ github.sha }}`.
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete latest --yes --cleanup-tag 2>/dev/null || true
+          gh release create latest dist/AI-Gateway.exe \
+            --target "$GITHUB_SHA" \
+            --title "AI Gateway - build mais recente" \
+            --notes "Gerado pelo GitHub Actions a partir do commit $GITHUB_SHA.
 
-            Baixe o `AI-Gateway.exe` e rode com duplo clique. Os dados ficam na pasta `data/` ao lado do executável.
-          files: dist/AI-Gateway.exe
+          Baixe o AI-Gateway.exe e rode com duplo clique. Os dados ficam na pasta data/ ao lado do executavel."

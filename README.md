@@ -15,6 +15,21 @@ sozinho para a próxima chave, modelo ou provedor.
 - Streaming, `auto`, `auto-code`, modelo unificado e `provedor:modelo`.
 - Endpoints custom OpenAI-compatíveis (Ollama, LM Studio, vLLM, llama.cpp).
 
+## Onde pegar cada chave
+
+| Provedor | Página da chave |
+|---|---|
+| Groq | https://console.groq.com/keys |
+| Google Gemini | https://aistudio.google.com/apikey |
+| OpenRouter (`:free`) | https://openrouter.ai/keys |
+| NVIDIA NIM | https://build.nvidia.com/ |
+| Cerebras | https://cloud.cerebras.ai/ |
+| Mistral | https://console.mistral.ai/api-keys |
+| OpenCode Zen | https://opencode.ai/zen |
+| Cloudflare Workers AI | https://dash.cloudflare.com/profile/api-tokens (token com permissão **Workers AI** + ID da conta) |
+
+Os mesmos links aparecem no painel, na aba **Chaves**, com o botão **Pegar chave ↗**.
+
 ## Requisitos
 
 Node.js 20+ (testado no 22). Nenhum pacote para instalar em runtime.
